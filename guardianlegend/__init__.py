@@ -1,5 +1,6 @@
-from typing import List, Dict, Tuple, Optional, Any
+from typing import List, Dict, Tuple, Optional, Any, Sequence
 
+import settings
 from BaseClasses import Region, Tutorial
 from worlds.AutoWorld import WebWorld, World
 from .Items import TGLItem, TGLItemData, item_table, event_item_table, get_item_count
@@ -9,7 +10,7 @@ from .Options import TGLOptions
 from .Regions import create_regions
 from .Rules import set_rules
 from .Map import TGLMap
-from .Rom import generate_output
+from .Rom import generate_output, ROM_HASH
 from .Client import TGLClient
 
 
@@ -27,6 +28,25 @@ class TGLWebWorld(WebWorld):
     ]
 
 
+class TGLSettings(settings.Group):
+    class RomFile(settings.UserFilePath):
+        """File name of the TGL EN rom"""
+        description = "The Guardian Legend ROM File"
+        copy_to: Optional[str] = "Guardian Legend, The (USA).nes"
+        md5s = [ROM_HASH,]
+
+        def browse(self: settings.T,
+                   filetypes: Optional[Sequence[Tuple[str, Sequence[str]]]] = None,
+                   **kwargs: Any) -> Optional[settings.T]:
+            if not filetypes:
+                file_types = [("NES", [".nes"])]
+                return super().browse(file_types, **kwargs)
+            else:
+                return super().browse(filetypes, **kwargs)
+
+    rom_file: RomFile = RomFile(RomFile.copy_to)
+
+
 class TGLWorld(World):
     """THE GUARDIAN LEGEND (NES 1988, Irem/Compile)"""
 
@@ -36,6 +56,7 @@ class TGLWorld(World):
     options: TGLOptions
     tgl_random_map: Optional[TGLMap]
     tgl_random_locations: Optional[Dict[int, Tuple[int, int, int]]]
+    settings: TGLSettings
     
     # combining Dicts like this is Py 3.9+ apparently...
     location_name_to_id = ({name: data.code for name, data in location_table.items()}
@@ -129,4 +150,3 @@ class TGLWorld(World):
 
     def generate_output(self, output_directory: str) -> None:
         generate_output(self, output_directory, self.options)
-    

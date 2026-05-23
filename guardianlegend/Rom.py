@@ -13,6 +13,8 @@ from .Map import TGLMap
 if TYPE_CHECKING:
     from . import TGLWorld
 
+ROM_HASH = "5acfc9d45b94f82f97e04c4434adbf36"
+
 #TGL_ITEMID_BASE = 8471760000
 AP_ITEM_CODE = 21    # Red Chips
 SHOP_JUNK_ITEM = 22  # Blue Chips
@@ -107,7 +109,7 @@ corridor_hints_length = {
 
 
 class TGLProcedurePatch(APProcedurePatch, APTokenMixin):
-    hash = "5acfc9d45b94f82f97e04c4434adbf36"
+    hash = ROM_HASH
     game = "The Guardian Legend"
     patch_file_ending = ".aptgl"
     result_file_ending = ".nes"
