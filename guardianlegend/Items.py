@@ -93,6 +93,10 @@ event_item_table: Dict[str, TGLItemData] = {
 
 }
 
+safety_key_table: dict[str, TGLItemData] = {
+    f"Safety Key {i}": TGLItemData("Keys", TGL_ITEMID_BASE+3000+i, ItemClassification.progression)
+    for i in range(1,11)
+}
 
 def get_item_count(name: str, distlevel: int) -> int:
     # Return item count based on item_distribution setting
@@ -116,6 +120,9 @@ def get_item_count(name: str, distlevel: int) -> int:
         "Rapid Fire Up": [6 ,5, 4 ,6 ],
         "Red Lander":    [9 ,10,8 ,10]
     }
+
+    if name in safety_key_table:
+        return 1
 
     if item_table[name].category == "Keys":
         return 1

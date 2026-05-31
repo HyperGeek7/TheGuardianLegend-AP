@@ -96,6 +96,16 @@ class RebalanceEnemies(Toggle):
     display_name = "Enable Enemy Balancing"
 '''
 
+class UseSafetyBypassItems(Toggle):
+    """This is an EXPERIMENTAL setting! Alters the condition to open Corridor 21
+    to require acquiring 10 "Safety Bypass" items instead of completing corridors 1- 10.
+    Corridors 1 - 10 grant an extra check to match.
+    """
+    # Really, this should probably be a "Goal" setting,
+    # but then I couldn't have the big scary EXPERIMENTAL
+    # warning.
+    display_name = "Use Safety Bypass Items"
+
 @dataclass
 class TGLOptions(PerGameCommonOptions):
     start_inventory_from_pool: StartInventoryPool
@@ -104,6 +114,7 @@ class TGLOptions(PerGameCommonOptions):
     item_gating: ItemGating
     corridor_hints: CorridorHints
     randomize_map: RandomizeMap
+    use_safety_bypass_items: UseSafetyBypassItems
     #randomize_corridors: RandomizeCorridors
     #balanced_enemies: RebalanceEnemies
     #death_link: DeathLink

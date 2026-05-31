@@ -3,9 +3,9 @@ from typing import List, Dict, Tuple, Optional, Any, Sequence
 import settings
 from BaseClasses import Region, Tutorial
 from worlds.AutoWorld import WebWorld, World
-from .Items import TGLItem, TGLItemData, item_table, event_item_table, get_item_count
+from .Items import TGLItem, TGLItemData, item_table, event_item_table, get_item_count, safety_key_table
 from .Locations import (TGLLocation, TGL_LOCID_BASE, TGL_LOCID_BONUS_GENERIC, location_table, location_table_generic,  
-                        event_location_table, location_address_lookup, get_generic_locations_by_id)
+                        event_location_table, location_address_lookup, get_generic_locations_by_id, safety_locations)
 from .Options import TGLOptions
 from .Regions import create_regions
 from .Rules import set_rules
@@ -60,8 +60,10 @@ class TGLWorld(World):
     
     # combining Dicts like this is Py 3.9+ apparently...
     location_name_to_id = ({name: data.code for name, data in location_table.items()}
-                           | {name: data.code for name, data in location_table_generic.items()})
-    item_name_to_id = {name: data.code for name, data in item_table.items()}
+                           | {name: data.code for name, data in location_table_generic.items()}
+                           | {name: data.code for name, data in safety_locations.items()})
+    item_name_to_id = ({name: data.code for name, data in item_table.items()}
+                           | {name: data.code for name, data in safety_key_table.items()})
 
     def generate_early(self) -> None:
         # If map rando option is set, need to randomize map here and pull out item location info
@@ -99,7 +101,10 @@ class TGLWorld(World):
         return slot_data
 
     def create_item(self, name: str) -> TGLItem:
-        data = item_table[name]
+        if self.options.use_safety_bypass_items and name in safety_key_table:
+            data = safety_key_table[name]
+        else:
+            data = item_table[name]
         return TGLItem(name, data.classification, data.code, self.player)
     
     def create_event(self, name: str) -> TGLItem:
@@ -112,7 +117,7 @@ class TGLWorld(World):
         random_location_list: List[str] = []
         if self.options.randomize_map:
             random_location_list.extend(get_generic_locations_by_id(list(self.tgl_random_locations.keys())))    
-        create_regions(self.multiworld, self.player, random_location_list)
+        create_regions(self.multiworld, self.player, random_location_list, self.options.use_safety_bypass_items)
         self._place_events()
 
     def _place_events(self):
@@ -122,7 +127,7 @@ class TGLWorld(World):
                 self.create_event(locname + " Cleared"))
 
     def set_rules(self):
-        set_rules(self.multiworld, self.player, self.options.item_gating.value)
+        set_rules(self.multiworld, self.player, self.options.item_gating.value, self.options.use_safety_bypass_items)
 
     def get_filler_item_name(self) -> str:
         return "Enemy Eraser"
@@ -138,6 +143,9 @@ class TGLWorld(World):
                 # Call helper function to determine item counts
                 quantity = get_item_count(name, self.options.item_distribution.value)
                 item_pool += [self.create_item(name) for _ in range(0, quantity)]
+
+        if self.options.use_safety_bypass_items:
+            item_pool += [self.create_item(name) for name in safety_key_table.keys()]
 
         self.multiworld.itempool += item_pool
 

@@ -1,6 +1,7 @@
 from typing import Dict, NamedTuple, Optional, Tuple, List
 
 from BaseClasses import Location
+from .Options import UseSafetyBypassItems
 
 
 class TGLLocation(Location):
@@ -22,11 +23,15 @@ def get_locations_by_category(category: str) -> Dict[str, TGLLocationData]:
     return location_dict
 
 
-def get_locations_by_areanum(areanum: str) -> Dict[str, TGLLocationData]:
+def get_locations_by_areanum(areanum: str, use_safety_bypass_items: UseSafetyBypassItems) -> Dict[str, TGLLocationData]:
     location_dict: Dict[str, TGLLocationData] = {}
     for name, data in location_table.items():
         if data.areanum == areanum:
             location_dict.setdefault(name, data)
+    if use_safety_bypass_items:
+        for name, data in safety_locations.items():
+            if data.areanum == areanum:
+                location_dict.setdefault(name, data)
     return location_dict
 
     
@@ -60,6 +65,7 @@ TGL_LOCID_GROUND_GENERIC   = TGL_LOCID_BASE + 5000
 TGL_LOCID_SHOP_GENERIC     = TGL_LOCID_BASE + 6000
 TGL_LOCID_CORRIDOR_GENERIC = TGL_LOCID_BASE + 7000
 TGL_LOCID_BONUS_GENERIC    = TGL_LOCID_BASE + 8000
+TGL_LOCID_SAFETIES         = TGL_LOCID_BASE + 9000
 
 
 # Note: For LOCID, 1000s is Ground drops, 2000s is Shops, 3000s is Corridors, 4000s for bonus Corridor items 
@@ -195,6 +201,15 @@ location_table: Dict[str, TGLLocationData] = {
     "A10 2000 Chip Shop (X12 Y5)":   TGLLocationData("Area 10", "Shop",      TGL_LOCID_SHOP+122,    (0x8, 0x8 )),
     
 }
+
+safety_locations: dict[str, TGLLocationData] = {
+    # Corridors 2 - 10 follow a pretty simple pattern
+    f"A{i} Corridor {i} Safety": TGLLocationData(f"Area {i}", "Corridor", TGL_LOCID_SAFETIES+i) for i in range(2,11)
+}
+
+# But Corridor 1 just *has* to be different.
+safety_locations["A0 Corridor 1 Safety"] = TGLLocationData("Area 0", "Corridor", TGL_LOCID_SAFETIES+1)
+
 
 '''
 # Matches RAM bitflag for check. to ROM location address, used by map randomizer and client to find correct location id

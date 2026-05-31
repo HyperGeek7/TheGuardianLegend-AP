@@ -17,6 +17,7 @@ ROM_RAPID_FIRE_LEVELS = 0x87CE
 ## RAM Address list
 
 # 0x0178-0x017b *appear* to be unused
+RAM_SAFETIES_RECEIVED = 0x179 # Number of safeties received
 RAM_ITEMS_RECEIVED = 0x17a  # ctx.items_received index
 RAM_KEYS_RECEIVED = 0x17b   # Remote Key items as sent by AP, in case in game value gets changed
 
@@ -166,11 +167,11 @@ class TGLClient(BizHawkClient):
                 is_remote_item = not ctx.slot_concerns_self(ctx.items_received[num_new_items].player)
 
                 # location id < 0 indicates cheat console or server item, we always need to process those
-                # location id in 4000s or 8000s indicates bonus corridor item that also needs to be handled
+                # location id in 4000s, 8000s, or 9000s indicates bonus corridor item that also needs to be handled
                 item_loc = ctx.items_received[num_new_items].location
                 is_special_item = ((item_loc < 0) 
                                    or (4000 <= (item_loc - TGL_LOCID_BASE) < 5000) 
-                                   or (8000 <= (item_loc - TGL_LOCID_BASE) < 9000))
+                                   or (8000 <= (item_loc - TGL_LOCID_BASE) < 10000))
                 next_item_type: Tuple = divmod(next_item_id - TGL_ITEMID_BASE, 1000)
 
                 # Determine how to handle the item based on type:
@@ -355,6 +356,24 @@ class TGLClient(BizHawkClient):
                         )
                     else:
                         raise Exception("Invalid Key flag sent to The Guardian Legend.")
+                # Safeties. Increment the count when one is received, our patched routine will check the new location.
+                elif next_item_type[0] == 3:
+                    ap_item_message = f"AP: You received your {get_itemname_by_id(next_item_id)}!"
+                    await bizhawk.display_message(ctx.bizhawk_ctx, ap_item_message)
+
+                    read_safeties = await bizhawk.read(
+                        ctx.bizhawk_ctx,
+                        [(RAM_SAFETIES_RECEIVED, 1, "RAM")]
+                    )
+                    new_safety_count = int.from_bytes(read_safeties[0], "little") + 1
+                    granted_item = await bizhawk.guarded_write(
+                        ctx.bizhawk_ctx,
+                        write_list=[
+                            (RAM_SAFETIES_RECEIVED, new_safety_count.to_bytes(1, "little"), "RAM"),
+                        ],
+                        guard_list=[(RAM_SAFETIES_RECEIVED, read_safeties[0], "RAM")]
+                    )
+
                 else:
                     raise Exception("Invalid item type ID sent to The Guardian Legend.")
                 
@@ -416,6 +435,7 @@ class TGLClient(BizHawkClient):
                     else:
                         locid = get_locationcode_by_bitflag((locbits[0] + 9, 1 << locbits[1]))
                     locid_bonus = locid + 1000
+                    locid_safety: int = locid + 6000
                     checks_out: List[int] = []
                     if locid not in ctx.checked_locations:
                         ctx.locations_checked.add(locid)
@@ -423,6 +443,9 @@ class TGLClient(BizHawkClient):
                     if locid_bonus not in ctx.checked_locations:
                         ctx.locations_checked.add(locid_bonus)
                         checks_out.append(locid_bonus)
+                    if j <= 10 and locid_safety in ctx.server_locations and locid_safety not in ctx.checked_locations:
+                        ctx.locations_checked.add(locid_safety)
+                        checks_out.append(locid_safety)
                     if checks_out != []:
                         await ctx.send_msgs([{"cmd": "LocationChecks", "locations": checks_out}])
 

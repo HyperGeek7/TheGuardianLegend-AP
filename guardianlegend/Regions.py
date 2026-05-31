@@ -2,15 +2,15 @@ from typing import Dict, List, NamedTuple, Optional
 
 from BaseClasses import MultiWorld, Region, Entrance
 from .Locations import (TGLLocation, location_table, location_table_generic, 
-                        get_locations_by_areanum, get_event_locations_by_areanum)
-
+                        get_locations_by_areanum, get_event_locations_by_areanum, safety_locations)
+from .Options import UseSafetyBypassItems
 
 class TGLRegionData(NamedTuple):
     locations: Optional[List[str]]
     region_exits: Optional[List[str]]
 
 
-def create_regions(multiworld: MultiWorld, player: int, random_location_names: List[str]):
+def create_regions(multiworld: MultiWorld, player: int, random_location_names: List[str], use_safety_bypass_items: UseSafetyBypassItems):
     #print("")
     #print(random_location_names)
     regions: Dict[str, TGLRegionData] = {
@@ -34,7 +34,7 @@ def create_regions(multiworld: MultiWorld, player: int, random_location_names: L
     if not random_location_names:
         for areanum in range(0, 11):
             areaname = "Area " + str(areanum)
-            for locname in get_locations_by_areanum(areaname).keys():
+            for locname in get_locations_by_areanum(areaname, use_safety_bypass_items).keys():
                 regions[areaname].locations.append(locname)
     # Fill regions by location name (map rando)
     else:
@@ -75,7 +75,9 @@ def create_region(multiworld: MultiWorld, player: int, name: str, data: TGLRegio
     if data.locations:
         for loc_name in data.locations:
             loc_data = None
-            if is_random_map:
+            if loc_name.endswith("Safety"):
+                loc_data = safety_locations.get(loc_name)
+            elif is_random_map:
                 loc_data = location_table_generic.get(loc_name)
             else:
                 loc_data = location_table.get(loc_name)

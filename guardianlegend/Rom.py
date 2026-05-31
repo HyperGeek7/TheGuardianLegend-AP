@@ -174,7 +174,7 @@ def write_tokens(world: "TGLWorld", options: TGLOptions, patch: TGLProcedurePatc
                     corridor_hint_items[location_data[1]] = location.item.classification
 
             # Corridor bonus items, these are remote and not displayed in-game
-            elif location_data[0] == 4:
+            elif location_data[0] in (4,9):
                 if location_data[1] > 10:
                     # Store the classification for Corridor 11-20 items for hints
                     corridor_hint_items[location_data[1]+100] = location.item.classification
@@ -196,7 +196,7 @@ def write_tokens(world: "TGLWorld", options: TGLOptions, patch: TGLProcedurePatc
                             location_rom_address,
                             item_data[1].to_bytes(1, 'big')
                         )    
-                    elif item_data[0] == 2:
+                    elif item_data[0] in (2,3):
                         # Key item - treat as remote item
                         patch.write_token(
                             APTokenTypes.WRITE, 
@@ -204,7 +204,7 @@ def write_tokens(world: "TGLWorld", options: TGLOptions, patch: TGLProcedurePatc
                             AP_ITEM_CODE.to_bytes(1, 'big')
                         )
                     else:
-                        raise Exception('Invalid item ID found for The Guardian Legend.')
+                        raise Exception(f'Invalid item ID ({location.item}) found for The Guardian Legend.')
 
                 # APItem: Set sprite to Red Chip in-game
                 else:
@@ -381,7 +381,39 @@ def write_tokens(world: "TGLWorld", options: TGLOptions, patch: TGLProcedurePatc
                 rapid_fire_byte+i,
                 balanced_rapid_fire[i].to_bytes(1, 'big')
             )
-        
+
+    # Safety bypasses
+    if options.use_safety_bypass_items:
+        patch.write_token(
+            APTokenTypes.WRITE,
+            0x14898,
+            bytes.fromhex("AD7901")
+        )
+
+        patch.write_token(
+            APTokenTypes.WRITE,
+            0x1489C,
+            bytes.fromhex("0A90")
+        )
+
+        patch.write_token(
+            APTokenTypes.WRITE,
+            0x1489F,
+            bytes.fromhex("B0")
+        )
+
+        patch.write_token(
+            APTokenTypes.WRITE,
+            0x1EE57,
+            bytes.fromhex("AD7901")
+        )
+
+        patch.write_token(
+            APTokenTypes.WRITE,
+            0x1EE5B,
+            bytes.fromhex("0AB0")
+        )
+
     # Corridor hints
     corridor_hint_main_text_data = 0x159C6
     # This text has to be exact length because it flows into another line

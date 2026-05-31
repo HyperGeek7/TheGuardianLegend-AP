@@ -4,6 +4,7 @@ from BaseClasses import CollectionState, MultiWorld
 from worlds.generic.Rules import add_rule, set_rule
 
 from .Items import red_lander_thresholds
+from .Options import UseSafetyBypassItems
 
 
 # Currently this compares to a hardcoded list of Max chip values as in the vanilla game,
@@ -49,7 +50,9 @@ def has_multibullets(state: CollectionState, player: int) -> bool:
 '''
 
 
-def has_final_boss_access(state: CollectionState, player: int) -> bool:
+def has_final_boss_access(state: CollectionState, player: int, use_safety_bypasses: UseSafetyBypassItems) -> bool:
+    if use_safety_bypasses:
+        return state.has_all((f"Safety Key {i}" for i in range (1,11)), player)
     all_cleared = True
     for i in range(1, 11):
         all_cleared &= state.has("Corridor " + str(i) + " Cleared", player)
@@ -84,7 +87,7 @@ offense_gating_table: Dict[int, List[int]] = {
 }
 
 
-def set_rules(multiworld: MultiWorld, player: int, gating: int):
+def set_rules(multiworld: MultiWorld, player: int, gating: int, use_safety_bypasses: UseSafetyBypassItems):
 
     # Area 1-10 require a specific key, enforced by the game
     # Additional gating set by options for Area 2 and up
@@ -148,7 +151,7 @@ def set_rules(multiworld: MultiWorld, player: int, gating: int):
 
     # Corridor 21 requires Corridor 1-10 Cleared
     multiworld.get_entrance("Corridor 21", player).access_rule = \
-        lambda state: has_final_boss_access(state, player)
+        lambda state: has_final_boss_access(state, player, use_safety_bypasses)
 
     # Victory
     multiworld.completion_condition[player] = lambda state: state.has("Corridor 21 Cleared", player)
