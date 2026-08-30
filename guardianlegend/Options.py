@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from Options import Toggle, DefaultOnToggle, Choice, NamedRange, DeathLink, PerGameCommonOptions, StartInventoryPool
+from Options import Range, Toggle, DefaultOnToggle, Choice, NamedRange, DeathLink, PerGameCommonOptions, StartInventoryPool
 
 
 class BalancedRapidFire(DefaultOnToggle):
@@ -98,13 +98,27 @@ class RebalanceEnemies(Toggle):
 
 class UseSafetyBypassItems(Toggle):
     """This is an EXPERIMENTAL setting! Alters the condition to open Corridor 21
-    to require acquiring 10 "Safety Bypass" items instead of completing corridors 1- 10.
+    to require acquiring "Safety Bypass" items instead of completing corridors 1- 10.
     Corridors 1 - 10 grant an extra check to match.
     """
     # Really, this should probably be a "Goal" setting,
     # but then I couldn't have the big scary EXPERIMENTAL
     # warning.
     display_name = "Use Safety Bypass Items"
+
+class SafetyBypassRequirement(Range):
+    """If Safety Bypass Items are turned on, how many are required to open Corridor 21?"""
+    display_name = "Required Safety Bypass Keys"
+    range_start = 1
+    range_end = 255
+    default= 10
+
+class SafetyBypassCount(Range):
+    """If Safety Bypass Items are turned on, how many are placed in the pool?"""
+    display_name = "Available Safety Bypass Keys"
+    range_start = 1
+    range_end = 255
+    default= 10
 
 @dataclass
 class TGLOptions(PerGameCommonOptions):
@@ -115,6 +129,8 @@ class TGLOptions(PerGameCommonOptions):
     corridor_hints: CorridorHints
     randomize_map: RandomizeMap
     use_safety_bypass_items: UseSafetyBypassItems
+    safety_bypass_requirement: SafetyBypassRequirement
+    safety_bypass_count: SafetyBypassCount
     #randomize_corridors: RandomizeCorridors
     #balanced_enemies: RebalanceEnemies
     #death_link: DeathLink

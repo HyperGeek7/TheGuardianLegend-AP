@@ -4,7 +4,7 @@ from BaseClasses import CollectionState, MultiWorld
 from worlds.generic.Rules import add_rule, set_rule
 
 from .Items import red_lander_thresholds
-from .Options import UseSafetyBypassItems
+from .Options import TGLOptions
 
 
 # Currently this compares to a hardcoded list of Max chip values as in the vanilla game,
@@ -50,9 +50,9 @@ def has_multibullets(state: CollectionState, player: int) -> bool:
 '''
 
 
-def has_final_boss_access(state: CollectionState, player: int, use_safety_bypasses: UseSafetyBypassItems) -> bool:
-    if use_safety_bypasses:
-        return state.has_all((f"Safety Key {i}" for i in range (1,11)), player)
+def has_final_boss_access(state: CollectionState, player: int, options: TGLOptions) -> bool:
+    if options.use_safety_bypass_items:
+        return state.has("Safety Bypass Key", player, options.safety_bypass_requirement.value)
     all_cleared = True
     for i in range(1, 11):
         all_cleared &= state.has("Corridor " + str(i) + " Cleared", player)
@@ -87,7 +87,7 @@ offense_gating_table: Dict[int, List[int]] = {
 }
 
 
-def set_rules(multiworld: MultiWorld, player: int, gating: int, use_safety_bypasses: UseSafetyBypassItems):
+def set_rules(multiworld: MultiWorld, player: int, options: TGLOptions):
 
     # Area 1-10 require a specific key, enforced by the game
     # Additional gating set by options for Area 2 and up
@@ -109,8 +109,8 @@ def set_rules(multiworld: MultiWorld, player: int, gating: int, use_safety_bypas
         '''
         
         set_rule(multiworld.get_entrance(areaname, player),
-                 lambda state, n=i: (has_enough_defense(state, player, defense_gating_table[gating][n])) 
-                                     and (has_enough_offense(state, player, offense_gating_table[gating][n])))
+                 lambda state, n=i: (has_enough_defense(state, player, defense_gating_table[options.item_gating.value][n])) 
+                                     and (has_enough_offense(state, player, offense_gating_table[options.item_gating.value][n])))
     
     add_rule(multiworld.get_entrance("Area 2", player),
              lambda state: has_area_key(state, player, "Crescent Key"))
@@ -151,7 +151,7 @@ def set_rules(multiworld: MultiWorld, player: int, gating: int, use_safety_bypas
 
     # Corridor 21 requires Corridor 1-10 Cleared
     multiworld.get_entrance("Corridor 21", player).access_rule = \
-        lambda state: has_final_boss_access(state, player, use_safety_bypasses)
+        lambda state: has_final_boss_access(state, player, options)
 
     # Victory
     multiworld.completion_condition[player] = lambda state: state.has("Corridor 21 Cleared", player)

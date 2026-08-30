@@ -1,9 +1,10 @@
+from math import floor
 from typing import List, Dict, Tuple, Optional, Any, Sequence
 
 import settings
-from BaseClasses import Region, Tutorial
+from BaseClasses import ItemClassification, Region, Tutorial
 from worlds.AutoWorld import WebWorld, World
-from .Items import TGLItem, TGLItemData, item_table, event_item_table, get_item_count, safety_key_table
+from .Items import TGLItem, TGLItemData, item_table, event_item_table, get_item_count
 from .Locations import (TGLLocation, TGL_LOCID_BASE, TGL_LOCID_BONUS_GENERIC, location_table, location_table_generic,  
                         event_location_table, location_address_lookup, get_generic_locations_by_id, safety_locations)
 from .Options import TGLOptions
@@ -62,8 +63,8 @@ class TGLWorld(World):
     location_name_to_id = ({name: data.code for name, data in location_table.items()}
                            | {name: data.code for name, data in location_table_generic.items()}
                            | {name: data.code for name, data in safety_locations.items()})
-    item_name_to_id = ({name: data.code for name, data in item_table.items()}
-                           | {name: data.code for name, data in safety_key_table.items()})
+    item_name_to_id = {name: data.code for name, data in item_table.items()}
+                           #| {name: data.code for name, data in safety_key_table.items()})
 
     def generate_early(self) -> None:
         # If map rando option is set, need to randomize map here and pull out item location info
@@ -78,6 +79,13 @@ class TGLWorld(World):
             #print("")
             #print(self.tgl_random_locations)
             #print("")
+        
+        #if self.options.use_safety_bypass_items:
+            # Because this can add an arbitrary number of items to the pool,
+            # we need to do some double-checks to ensure we can generate.
+
+        #    if self.options.safety_bypass_requirement > self.options.safety_bypass_count:
+        #        raise Exception("Can't ")
 
     # In order to know which location IDs to send in map rando, client needs a Dict of RAM bitflags to location IDs
     def fill_slot_data(self) -> Dict[str, Any]:
@@ -101,10 +109,10 @@ class TGLWorld(World):
         return slot_data
 
     def create_item(self, name: str) -> TGLItem:
-        if self.options.use_safety_bypass_items and name in safety_key_table:
-            data = safety_key_table[name]
-        else:
-            data = item_table[name]
+        #if self.options.use_safety_bypass_items and name in safety_key_table:
+        #    data = safety_key_table[name]
+        #else:
+        data = item_table[name]
         return TGLItem(name, data.classification, data.code, self.player)
     
     def create_event(self, name: str) -> TGLItem:
@@ -127,25 +135,55 @@ class TGLWorld(World):
                 self.create_event(locname + " Cleared"))
 
     def set_rules(self):
-        set_rules(self.multiworld, self.player, self.options.item_gating.value, self.options.use_safety_bypass_items)
+        set_rules(self.multiworld, self.player, self.options)
 
     def get_filler_item_name(self) -> str:
-        return "Enemy Eraser"
+        if not self.options.use_safety_bypass_items:
+            return "Enemy Eraser"
+
+        item_distribution = self.options.item_distribution.value
+        eraser_count = get_item_count("Enemy Eraser", item_distribution, self.options)
+        pack_count = get_item_count("Energy Pack", item_distribution, self.options)
+        ratio = eraser_count / (eraser_count + pack_count)
+        
+        if self.random.random() < ratio:
+            return "Enemy Eraser"
+        return "Energy Pack"
 
     def create_items(self) -> None:
         item_pool: List[TGLItem] = []
+        loc_count = len(self.multiworld.get_unfilled_locations(self.player))
+
         for name, data in item_table.items():
+            if self.options.use_safety_bypass_items and data.classification == ItemClassification.filler:
+                # The bypass items mess with the count of items in the pool in a way that I'm finding
+                # kind of hard to reconcile with the hard-coded counts. My solution is to ignore the hard-
+                # coded counts for items classified as filler (energy packs and enemy erasers) and then
+                # add them back to any left over slots in roughly the same ratio as counts define.
+
+                continue
             if self.options.item_distribution.value == 0:
                 # Vanilla item distribution saved in table because of weirdness with counts
                 quantity = data.max_quantity
                 item_pool += [self.create_item(name) for _ in range(0, quantity)]
             else:
                 # Call helper function to determine item counts
-                quantity = get_item_count(name, self.options.item_distribution.value)
+                quantity = get_item_count(name, self.options.item_distribution.value, self.options)
                 item_pool += [self.create_item(name) for _ in range(0, quantity)]
 
         if self.options.use_safety_bypass_items:
-            item_pool += [self.create_item(name) for name in safety_key_table.keys()]
+            empty_count = loc_count - len(item_pool)
+            item_distribution = self.options.item_distribution.value
+            eraser_count = get_item_count("Enemy Eraser", item_distribution, self.options)
+            pack_count = get_item_count("Energy Pack", item_distribution, self.options)
+            ratio = eraser_count / (eraser_count + pack_count)
+            eraser_count = floor(empty_count * ratio)
+            item_pool += [self.create_item("Enemy Eraser") for _ in range(eraser_count)]
+            item_pool += [self.create_item("Energy Pack") for _ in range(empty_count - eraser_count)]
+        else:
+            # Top up the pool, just in case I've borked something.
+            empty_count = loc_count - len(item_pool)
+            item_pool += [self.create_filler() for _ in range(empty_count)]
 
         self.multiworld.itempool += item_pool
 

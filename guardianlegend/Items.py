@@ -2,6 +2,8 @@ from typing import Dict, List, NamedTuple, Optional
 
 from BaseClasses import Item, ItemClassification
 
+from .Options import TGLOptions
+
 
 class TGLItem(Item):
     game = "TGL"
@@ -27,7 +29,7 @@ def get_itemname_by_id(itemid: int) -> str:
     for name, data in item_table.items():
         if data.code == itemid:
             return name
-    
+
 
 # ID code base 8471760000 = 'TGL' in ASCII decimal + 0000
 TGL_ITEMID_BASE = 8471760000
@@ -75,7 +77,8 @@ item_table: Dict[str, TGLItemData] = {
     #"Life Heart": TGLItemData("Filler",  TGL_ITEMID_BASE+1020, ItemClassification.filler),
     #"Red Chip":   TGLItemData("Filler",  TGL_ITEMID_BASE+1021, ItemClassification.filler),
     #"Blue Chip":  TGLItemData("Filler",  TGL_ITEMID_BASE+1022, ItemClassification.filler),
-
+    # Safety Bypass Keys - only present if option enabled
+    "Safety Bypass Key": TGLItemData("Safeties", TGL_ITEMID_BASE + 3001, ItemClassification.progression),
 }
 
 event_item_table: Dict[str, TGLItemData] = {
@@ -93,12 +96,8 @@ event_item_table: Dict[str, TGLItemData] = {
 
 }
 
-safety_key_table: dict[str, TGLItemData] = {
-    f"Safety Key {i}": TGLItemData("Keys", TGL_ITEMID_BASE+3000+i, ItemClassification.progression)
-    for i in range(1,11)
-}
 
-def get_item_count(name: str, distlevel: int) -> int:
+def get_item_count(name: str, distlevel: int, options: Optional[TGLOptions] = None) -> int:
     # Return item count based on item_distribution setting
     # option_vanilla = 0 - not called here, baked into item_table
     # option_exact = 1
@@ -106,7 +105,7 @@ def get_item_count(name: str, distlevel: int) -> int:
     # option_extra = 3
 
     # NOTE: There are 106 locations to place items, so each "column" here should add to 106
-    #       Other than the first column which is just a reference... 
+    #       Other than the first column which is just a reference...
 
     item_counts: Dict[str, List[int]] = {
         "Subweapons":    [3 ,3 ,2 ,4 ],
@@ -121,15 +120,18 @@ def get_item_count(name: str, distlevel: int) -> int:
         "Red Lander":    [9 ,10,8 ,10]
     }
 
-    if name in safety_key_table:
-        return 1
-
     if item_table[name].category == "Keys":
         return 1
-    
+
+    elif item_table[name].category == "Safeties":
+        if options and options.use_safety_bypass_items:
+            return options.safety_bypass_count
+
+        return 0
+
     elif item_table[name].category == "Subweapons":
         return item_counts["Subweapons"][distlevel]
-    
+
     else:
         return item_counts[name][distlevel]
     

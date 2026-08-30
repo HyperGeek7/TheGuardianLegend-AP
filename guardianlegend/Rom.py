@@ -390,10 +390,11 @@ def write_tokens(world: "TGLWorld", options: TGLOptions, patch: TGLProcedurePatc
             bytes.fromhex("AD7901")
         )
 
+        requirement_byte = options.safety_bypass_requirement.value.to_bytes(1)
         patch.write_token(
             APTokenTypes.WRITE,
             0x1489C,
-            bytes.fromhex("0A90")
+            requirement_byte + b"\x90"
         )
 
         patch.write_token(
@@ -411,7 +412,7 @@ def write_tokens(world: "TGLWorld", options: TGLOptions, patch: TGLProcedurePatc
         patch.write_token(
             APTokenTypes.WRITE,
             0x1EE5B,
-            bytes.fromhex("0AB0")
+            requirement_byte + b"\xB0"
         )
 
     # Corridor hints
